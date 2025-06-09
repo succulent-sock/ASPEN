@@ -17,6 +17,7 @@ def install(package):
 try:
     from pywinauto import ElementNotFoundError
     from pywinauto.application import Application
+    from pywinauto.controls.menuwrapper import MenuItemNotEnabled
     from pathlib import Path
     import pandas as pd
     from openpyxl import load_workbook
@@ -193,6 +194,10 @@ def access_ASPEN():
     except ElementNotFoundError as e:
         print("Error connecting to ASPEN OneLiner.")
         tkinter.messagebox.showerror("ERROR", "Could not connect to ASPEN.\nTry closing & reopening ASPEN OneLiner.\nProgram has terminated.")
+        sys.exit(1)
+    except MenuItemNotEnabled as e:
+        print("Error: No fault detected.")
+        tkinter.messagebox.showerror("ERROR", "No fault detected.\nPlease run fault(s) manually before starting program.\nProgram has terminated.")
         sys.exit(1)
 
 def get_fault_descriptions(lines):
