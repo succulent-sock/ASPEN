@@ -31,6 +31,7 @@ except:
     # Reimport after installation
     from pywinauto import ElementNotFoundError
     from pywinauto.application import Application
+    from pywinauto.controls.menuwrapper import MenuItemNotEnabled
     from pathlib import Path
     import pandas as pd
     from openpyxl import load_workbook
