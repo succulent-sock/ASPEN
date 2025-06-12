@@ -103,7 +103,6 @@ def access_ASPEN():
         print("Waiting for user input...")
         try:
             while True:
-                time.sleep(0.2)
                 if distance_curve_window.exists(timeout=1):
                     distance_curve_window.wait("visible", timeout=10)
                     print("Relay curve window detected.")
@@ -116,10 +115,6 @@ def access_ASPEN():
                     print("Timeout: No relay curve window opened within 360 seconds.")
                     tkinter.messagebox.showerror("Timeout", "Relay Curve window did not open. Program terminated.")
                     sys.exit(1)
-                elif not temp_window.exists(timeout=1):
-                    print("Terminated: No relay curve window opened.")
-                    tkinter.messagebox.showerror("Terminated", "No relay curve window opened. Program terminated.")
-                    sys.exit(0)
         except Exception as e:
             print(f"ERROR: {e}")
             tkinter.messagebox.showerror("ERROR", "An error occurred. Program terminated.")
@@ -195,11 +190,11 @@ def access_ASPEN():
         tkinter.messagebox.showerror("File Not Found", "Could not find saved file. Program has terminated.")
         sys.exit(0)
     except ElementNotFoundError as e:
-        print("Error connecting to ASPEN OneLiner.")
+        print(f"Error connecting to ASPEN OneLiner: {e}")
         tkinter.messagebox.showerror("ERROR", "Could not connect to ASPEN.\nTry closing & reopening ASPEN OneLiner.\nProgram has terminated.")
         sys.exit(1)
     except MenuItemNotEnabled as e:
-        print("Error: No fault detected &/or no relay selected.")
+        print(f"Error: No fault detected &/or no relay selected: {e}")
         tkinter.messagebox.showerror("ERROR", "No fault detected.\nPlease run fault(s) manually & select a relay before starting program.\nProgram has terminated.")
         sys.exit(1)
 
