@@ -75,6 +75,8 @@ def access_ASPEN():
         app = Application(backend="win32").connect(title_re=".*ASPEN OneLiner.*")
         # Access main window
         main_window = app.window(title_re=".*ASPEN OneLiner.*")
+        
+        time.sleep(0.2)
 
         # Safely close windows before accessing
         # Assumes the title of windows contains phrases below
@@ -94,13 +96,14 @@ def access_ASPEN():
         # Show Relay Curve and Logic Scheme
         main_window.menu_select("Relay->View Relay Curve and Logic Scheme...")
 
-        timeout_seconds = 180
+        timeout_seconds = 360
         start_time = time.time()
         
         # Wait for the user to select a relay and click OK
         print("Waiting for user input...")
         try:
             while True:
+                time.sleep(0.2)
                 if distance_curve_window.exists(timeout=1):
                     distance_curve_window.wait("visible", timeout=10)
                     print("Relay curve window detected.")
@@ -109,15 +112,14 @@ def access_ASPEN():
                     overcurrent_curve_window.wait("visible", timeout=10)
                     print("Relay curve window detected.")
                     break
+                elif time.time() - start_time > timeout_seconds:
+                    print("Timeout: No relay curve window opened within 360 seconds.")
+                    tkinter.messagebox.showerror("Timeout", "Relay Curve window did not open. Program terminated.")
+                    sys.exit(1)
                 elif not temp_window.exists(timeout=1):
                     print("Terminated: No relay curve window opened.")
                     tkinter.messagebox.showerror("Terminated", "No relay curve window opened. Program terminated.")
                     sys.exit(0)
-                elif time.time() - start_time > timeout_seconds:
-                    print("Timeout: No relay curve window opened within 180 seconds.")
-                    tkinter.messagebox.showerror("Timeout", "Relay Curve window did not open. Program terminated.")
-                    sys.exit(1)
-                time.sleep(0.2)
         except Exception as e:
             print(f"ERROR: {e}")
             tkinter.messagebox.showerror("ERROR", "An error occurred. Program terminated.")
@@ -197,8 +199,8 @@ def access_ASPEN():
         tkinter.messagebox.showerror("ERROR", "Could not connect to ASPEN.\nTry closing & reopening ASPEN OneLiner.\nProgram has terminated.")
         sys.exit(1)
     except MenuItemNotEnabled as e:
-        print("Error: No fault detected.")
-        tkinter.messagebox.showerror("ERROR", "No fault detected.\nPlease run fault(s) manually before starting program.\nProgram has terminated.")
+        print("Error: No fault detected &/or no relay selected.")
+        tkinter.messagebox.showerror("ERROR", "No fault detected.\nPlease run fault(s) manually & select a relay before starting program.\nProgram has terminated.")
         sys.exit(1)
 
 def get_fault_descriptions(lines):
