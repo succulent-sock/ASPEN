@@ -69,10 +69,21 @@ def access_ASPEN():
     folder_path (Path) - directory of txt file saved
     distance_curve (bool) - whether the curve examined is Distance or Overcurrent 
     """
+    timeout_seconds = 360
     try:
+        start_time = time.time()
+        app = None
         # Connect to ASPEN Oneliner
         # Requires ASPEN Oneliner to already be running
-        app = Application(backend="win32").connect(title_re=".*ASPEN OneLiner.*")
+        while time.time() - start_time < timeout_seconds:
+            try:
+                app = Application(backend="win32").connect(title_re=".*ASPEN OneLiner.*")
+                print("Connected to ASPEN OneLiner.")
+                break
+            except Exception:
+                time.sleep(0.5)
+        if not app:
+            raise ElementNotFoundError()
         # Access main window
         main_window = app.window(title_re=".*ASPEN OneLiner.*")
         
@@ -96,7 +107,6 @@ def access_ASPEN():
         # Show Relay Curve and Logic Scheme
         main_window.menu_select("Relay->View Relay Curve and Logic Scheme...")
 
-        timeout_seconds = 360
         start_time = time.time()
         
         # Wait for the user to select a relay and click OK
@@ -134,8 +144,17 @@ def access_ASPEN():
         print("Relay curve window ready.")
         print("Showing relay operations for all faults.")
 
-        # Open TTY window
-        main_window.menu_select("View->TTY Window")
+        start_time = time.time()
+
+        while time.time() - start_time < timeout_seconds:
+            try:
+                # Open TTY window
+                main_window.menu_select("View->TTY Window")
+                break
+            except Exception:
+                time.sleep(0.5)
+        if not app:
+            raise TimeoutError()
         # Select all text in TTY Window
         tty_window.menu_select("Edit->Select All")
         # Save all text to txt file
