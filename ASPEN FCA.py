@@ -69,21 +69,10 @@ def access_ASPEN():
     folder_path (Path) - directory of txt file saved
     distance_curve (bool) - whether the curve examined is Distance or Overcurrent 
     """
-    timeout_seconds = 360
     try:
-        start_time = time.time()
-        app = None
         # Connect to ASPEN Oneliner
         # Requires ASPEN Oneliner to already be running
-        while time.time() - start_time < timeout_seconds:
-            try:
-                app = Application(backend="win32").connect(title_re=".*ASPEN OneLiner.*")
-                print("Connected to ASPEN OneLiner.")
-                break
-            except Exception:
-                time.sleep(0.5)
-        if not app:
-            raise ElementNotFoundError()
+        app = Application(backend="win32").connect(title_re=".*ASPEN OneLiner.*")
         # Access main window
         main_window = app.window(title_re=".*ASPEN OneLiner.*")
         
@@ -107,6 +96,7 @@ def access_ASPEN():
         # Show Relay Curve and Logic Scheme
         main_window.menu_select("Relay->View Relay Curve and Logic Scheme...")
 
+        timeout_seconds = 360
         start_time = time.time()
         
         # Wait for the user to select a relay and click OK
@@ -144,17 +134,8 @@ def access_ASPEN():
         print("Relay curve window ready.")
         print("Showing relay operations for all faults.")
 
-        start_time = time.time()
-
-        while time.time() - start_time < timeout_seconds:
-            try:
-                # Open TTY window
-                main_window.menu_select("View->TTY Window")
-                break
-            except Exception:
-                time.sleep(0.5)
-        if not app:
-            raise TimeoutError()
+        # Open TTY window
+        main_window.menu_select("View->TTY Window")
         # Select all text in TTY Window
         tty_window.menu_select("Edit->Select All")
         # Save all text to txt file
@@ -418,12 +399,12 @@ def get_fault_table(lines, curve_type):
                     "Fault #": int(fault) if fault != "" else "",
                     "Operate Time": time_label[1],
                     "Operate Zone": time_label[0],
-                    "Impedance (Magnitude)": float(imp[0]),
+                    "Impedance (Magnitude - Ohms secondary)": float(imp[0]),
                     "Impedance (Angle)": float(imp[1])
                 })
         else:
             time_parts = time_line.split()
-            # Get fault current
+            # Get Fault Current (3I0)
             fault_current_line = relay_line.split()
             fault_current_line = [entry for entry in fault_current_line if "." in entry]
 
@@ -433,7 +414,7 @@ def get_fault_table(lines, curve_type):
                     "Relay": relay_name,
                     "Fault #": int(fault) if fault != "" else "",
                     "Operate Time": time,
-                    "Fault Current": currentA,
+                    "Fault Current (3I0)": currentA,
                 })
     if not rows_for_table_frame:
         raise ValueError("ERROR: No relay fault data could be parsed from the TTY text.")
@@ -500,9 +481,9 @@ def get_max_impedance(dataframe):
     max_impedance_by_relay (list) - list of maximum impedance amongst relays
     """
     # Overall Max
-    max_impedance = dataframe['Impedance (Magnitude)'].max()
+    max_impedance = dataframe['Impedance (Magnitude - Ohms secondary)'].max()
     # Maximums by relay
-    max_impedance_by_relay = dataframe.groupby('Relay')['Impedance (Magnitude)'].max()
+    max_impedance_by_relay = dataframe.groupby('Relay')['Impedance (Magnitude - Ohms secondary)'].max()
     max_impedance_by_relay = max_impedance_by_relay.to_dict()
     return max_impedance, max_impedance_by_relay
 
@@ -518,9 +499,9 @@ def get_min_impedance(dataframe):
     min_impedance_by_relay (list) - list of minimum impedance amongst relays
     """
     # Overall Min
-    min_impedance = dataframe['Impedance (Magnitude)'].min()
+    min_impedance = dataframe['Impedance (Magnitude - Ohms secondary)'].min()
     # Minimums by relay
-    min_impedance_by_relay = dataframe.groupby('Relay')['Impedance (Magnitude)'].min()
+    min_impedance_by_relay = dataframe.groupby('Relay')['Impedance (Magnitude - Ohms secondary)'].min()
     min_impedance_by_relay = min_impedance_by_relay.to_dict()
     return min_impedance, min_impedance_by_relay
 
@@ -621,7 +602,7 @@ def create_xlsx(txt_location, dataframe):
     wb = load_workbook(file_path)
     ws = wb[sheet_name]
 
-    if "Impedance (Magnitude)" in dataframe.columns:
+    if "Impedance (Magnitude - Ohms secondary)" in dataframe.columns:
         start_row = 2
         # Impedance maximums
         # Per relay
