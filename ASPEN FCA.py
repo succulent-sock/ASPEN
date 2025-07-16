@@ -1,3 +1,8 @@
+"""
+Release:  V1 - 07/16/2025
+Internal: V1
+Last Updated: 07/16/2025
+"""
 import subprocess
 import sys
 import time
@@ -7,11 +12,7 @@ import tkinter.filedialog
 import re
 
 def install(package):
-    """
-    Automatically runs the Python pip install command to download necessary external packages
-
-    Parameter: package (str) - package to install
-    """
+    """ Automatically runs the Python pip install command to download necessary external packages """
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
 try:
@@ -43,16 +44,7 @@ except:
     sys.exit(1)
 
 def get_txt_file(directory, message):
-    """
-    Opens a window to select a text file
-
-    Parameters:
-    directory (str) - folder to open
-    message (str) - title for window
-
-    Return:
-    (str) - file path
-    """
+    """ Opens a window to select a text file """
     root = tkinter.Tk()
     # Hide the main window
     root.withdraw() 
@@ -62,13 +54,7 @@ def get_txt_file(directory, message):
     return file
 
 def access_ASPEN():
-    """
-    Connects to open ASPEN Oneliner window to obtain TTY Window data
-
-    Returns:
-    folder_path (Path) - directory of txt file saved
-    distance_curve (bool) - whether the curve examined is Distance or Overcurrent 
-    """
+    """ Connects to open ASPEN Oneliner window to obtain TTY Window data """
     try:
         # Connect to ASPEN Oneliner
         # Requires ASPEN Oneliner to already be running
@@ -199,15 +185,7 @@ def access_ASPEN():
         sys.exit(1)
 
 def get_fault_descriptions(lines):
-    """
-    Iterates over Fault Description section of TTY window text file to find lines containing pertinent information.
-
-    Parameter:
-    lines (list) - lines of text from the Fault Description section
-
-    Return:
-    fault_descriptions (DataFrame) - categorized data parsed from Fault Description section
-    """
+    """ Iterates over Fault Description section of TTY window text file to find lines containing pertinent information. """
     # Match Fault lines
     fault_lines = []
     with_end_open = []
@@ -335,15 +313,7 @@ def get_fault_descriptions(lines):
     return fault_descriptions
 
 def get_fault_table(lines, curve_type):
-    """
-    Iterate over fault table section to find lines containing pertinent information.
-
-    Parameter:
-    lines (list) - lines of text from the fault table section
-
-    Return:
-    fault_descriptions (DataFrame) - categorized data parsed from fault table section
-    """
+    """ Iterate over fault table section to find lines containing pertinent information. """
     rows_for_table_frame = []
     for i in range(0, len(lines), 4):
         # Check for at least 4 lines left
@@ -422,14 +392,7 @@ def get_fault_table(lines, curve_type):
     return fault_table
 
 def clean_tty_text(tty_text_path, fault_start, curve_type):
-    """
-    Reads all content in the TTY window text file. Stores, parses, & organizes last simulated fault data.
-
-    Parameters:
-    tty_text_path (str) - file path to TTY window txt file
-    fault_start (str) - phrase to look for in txt file to indicate the beginning of the data to store\
-    curve_type (bool) - whether the curve examined is Distance or Overcurrent 
-    """
+    """ Reads all content in the TTY window text file. Stores, parses, & organizes last simulated fault data. """
     # Read all TTY window text saved
     with open(tty_text_path, 'r', encoding='utf-8') as file:
         content = file.read()
@@ -470,16 +433,7 @@ def clean_tty_text(tty_text_path, fault_start, curve_type):
     return faults_frame
 
 def get_max_impedance(dataframe):
-    """
-    Gets the maximum impedance from the faults collected
-
-    Parameter:
-    dataframe (DataFrame) - table of faults to compare
-
-    Returns:
-    max_impedance (float) - maximum overall impedance
-    max_impedance_by_relay (list) - list of maximum impedance amongst relays
-    """
+    """ Gets the maximum impedance from the faults collected """
     # Overall Max
     max_impedance = dataframe['Impedance (Magnitude - Ohms secondary)'].max()
     # Maximums by relay
@@ -488,16 +442,7 @@ def get_max_impedance(dataframe):
     return max_impedance, max_impedance_by_relay
 
 def get_min_impedance(dataframe):
-    """
-    Gets the minimum impedance from the faults collected
-
-    Parameter:
-    dataframe (DataFrame) - table of faults to compare
-
-    Returns:
-    min_impedance (float) - minimum overall impedance
-    min_impedance_by_relay (list) - list of minimum impedance amongst relays
-    """
+    """ Gets the minimum impedance from the faults collected """
     # Overall Min
     min_impedance = dataframe['Impedance (Magnitude - Ohms secondary)'].min()
     # Minimums by relay
@@ -506,12 +451,7 @@ def get_min_impedance(dataframe):
     return min_impedance, min_impedance_by_relay
 
 def apply_header_style(cell):
-    """
-    Applies appearance for headers
-
-    Parameter:
-    cell - cell in Excel file to apply header appearance to
-    """
+    """ Applies appearance for headers """
     # Header style
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
@@ -519,23 +459,12 @@ def apply_header_style(cell):
     cell.fill = header_fill
 
 def apply_row_style(cell):
-    """
-    Applies appearance for row cell
-
-    Parameter:
-    cell - cell in Excel file to apply row appearance to
-    """
+    """ Applies appearance for row cell """
     fill_gray = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
     cell.fill = fill_gray
 
 def stylize_main_table(ws, end_col):
-    """
-    Applies appearance to main table in Excel file
-
-    Parameters:
-    ws (Worksheet) - sheet of Excel file to use style on
-    end_col (int) - index of last column of main table in Excel file
-    """
+    """ Applies appearance to main table in Excel file """
     # Border style
     thin_border = Border(
         left=Side(style='thin'),
@@ -564,13 +493,7 @@ def stylize_main_table(ws, end_col):
             cell.alignment = Alignment(horizontal="center", vertical="center")
 
 def create_xlsx(txt_location, dataframe):
-    """
-    Creates or appends to an Excel spreadsheet to display fault data.
-
-    Parameters:
-    txt_location (str) - file path of TTY Window txt file
-    dataframe (DataFrame) - fault data
-    """
+    """ Creates or appends to an Excel spreadsheet to display fault data. """
     # Create Excel file
     original_txt_location = Path(txt_location)
     file_path = original_txt_location.with_name("Fault Summary - TTY Window.xlsx")
