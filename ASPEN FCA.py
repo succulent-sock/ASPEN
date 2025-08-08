@@ -1,17 +1,19 @@
+"""
+Release:  Revision 2 - 08/08/2025
+Internal: Revision 2
+Last Updated: 08/08/2025
+"""
 import subprocess
 import sys
 import time
 import tkinter
 import tkinter.messagebox
 import tkinter.filedialog
+import tkinter.simpledialog
 import re
 
 def install(package):
-    """
-    Automatically runs the Python pip install command to download necessary external packages
-
-    Parameter: package (str) - package to install
-    """
+    """ Automatically runs the Python pip install command to download necessary external packages """
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
 try:
@@ -43,32 +45,42 @@ except:
     sys.exit(1)
 
 def get_txt_file(directory, message):
-    """
-    Opens a window to select a text file
-
-    Parameters:
-    directory (str) - folder to open
-    message (str) - title for window
-
-    Return:
-    (str) - file path
-    """
+    """ Opens a window to select a text file """
     root = tkinter.Tk()
     # Hide the main window
     root.withdraw() 
+    # Window on top
+    root.attributes('-topmost', True)
+    root.lift()
+    root.focus_force() 
     root.update()
     file = tkinter.filedialog.askopenfilename(title=message, initialdir=directory, filetypes=[("Text files", "*.TXT *.txt")])
     root.destroy()
     return file
 
-def access_ASPEN():
-    """
-    Connects to open ASPEN Oneliner window to obtain TTY Window data
+def ask_file_name(message):
+    """ Opens a window to enter a file name """
+    root = tkinter.Tk()
+    # Hide the main window
+    root.withdraw()
+    # Window on top
+    root.attributes('-topmost', True)
+    root.lift()
+    root.focus_force() 
 
-    Returns:
-    folder_path (Path) - directory of txt file saved
-    distance_curve (bool) - whether the curve examined is Distance or Overcurrent 
-    """
+    file_name = tkinter.simpledialog.askstring(
+    title="File Name",
+    prompt=message
+    )
+    if not file_name:
+        # Use default
+        file_name = "Fault Summary - TTY Window"
+    root.destroy()
+    return file_name
+
+
+def access_ASPEN():
+    """ Connects to open ASPEN Oneliner window to obtain TTY Window data """
     try:
         # Connect to ASPEN Oneliner
         # Requires ASPEN Oneliner to already be running
@@ -199,15 +211,7 @@ def access_ASPEN():
         sys.exit(1)
 
 def get_fault_descriptions(lines):
-    """
-    Iterates over Fault Description section of TTY window text file to find lines containing pertinent information.
-
-    Parameter:
-    lines (list) - lines of text from the Fault Description section
-
-    Return:
-    fault_descriptions (DataFrame) - categorized data parsed from Fault Description section
-    """
+    """ Iterates over Fault Description section of TTY window text file to find lines containing pertinent information. """
     # Match Fault lines
     fault_lines = []
     with_end_open = []
@@ -335,15 +339,7 @@ def get_fault_descriptions(lines):
     return fault_descriptions
 
 def get_fault_table(lines, curve_type):
-    """
-    Iterate over fault table section to find lines containing pertinent information.
-
-    Parameter:
-    lines (list) - lines of text from the fault table section
-
-    Return:
-    fault_descriptions (DataFrame) - categorized data parsed from fault table section
-    """
+    """ Iterate over fault table section to find lines containing pertinent information. """
     rows_for_table_frame = []
     for i in range(0, len(lines), 4):
         # Check for at least 4 lines left
@@ -375,6 +371,7 @@ def get_fault_table(lines, curve_type):
             time_line = relay_line.split(":")
             time_line.insert(1, time_line[0][-3:])
             time_line[0] = time_line[0][:-3]
+            time_line = [" " + entry + " " for entry in time_line]
             time_line = "".join(time_line[1:]).split()
             time_pair = []
             for idx, t in enumerate(time_line):
@@ -395,9 +392,9 @@ def get_fault_table(lines, curve_type):
             for fault, time_label, imp in zip(fault_nums, time_pair, imp_pairs):
                 
                 rows_for_table_frame.append({
-                    "Relay": relay_name,
+                    # "Relay": relay_name,
                     "Fault #": int(fault) if fault != "" else "",
-                    "Operate Time": time_label[1],
+                    "Operate Time (s)": float(time_label[1].strip("s")),
                     "Operate Zone": time_label[0],
                     "Impedance (Magnitude - Ohms secondary)": float(imp[0]),
                     "Impedance (Angle)": float(imp[1])
@@ -411,10 +408,10 @@ def get_fault_table(lines, curve_type):
             # Make Overcurrent Curve DataFrame entries
             for fault, time, currentA in zip(fault_nums, time_parts, fault_current_line):
                 rows_for_table_frame.append({
-                    "Relay": relay_name,
+                    # "Relay": relay_name,
                     "Fault #": int(fault) if fault != "" else "",
-                    "Operate Time": time,
-                    "Fault Current (3I0)": currentA,
+                    "Operate Time (s)": float(time.strip("s")),
+                    "Fault Current (3I0 - A)": float(currentA.strip("A")),
                 })
     if not rows_for_table_frame:
         raise ValueError("ERROR: No relay fault data could be parsed from the TTY text.")
@@ -422,14 +419,7 @@ def get_fault_table(lines, curve_type):
     return fault_table
 
 def clean_tty_text(tty_text_path, fault_start, curve_type):
-    """
-    Reads all content in the TTY window text file. Stores, parses, & organizes last simulated fault data.
-
-    Parameters:
-    tty_text_path (str) - file path to TTY window txt file
-    fault_start (str) - phrase to look for in txt file to indicate the beginning of the data to store\
-    curve_type (bool) - whether the curve examined is Distance or Overcurrent 
-    """
+    """ Reads all content in the TTY window text file. Stores, parses, & organizes last simulated fault data. """
     # Read all TTY window text saved
     with open(tty_text_path, 'r', encoding='utf-8') as file:
         content = file.read()
@@ -470,48 +460,19 @@ def clean_tty_text(tty_text_path, fault_start, curve_type):
     return faults_frame
 
 def get_max_impedance(dataframe):
-    """
-    Gets the maximum impedance from the faults collected
-
-    Parameter:
-    dataframe (DataFrame) - table of faults to compare
-
-    Returns:
-    max_impedance (float) - maximum overall impedance
-    max_impedance_by_relay (list) - list of maximum impedance amongst relays
-    """
+    """ Gets the maximum impedance from the faults collected """
     # Overall Max
     max_impedance = dataframe['Impedance (Magnitude - Ohms secondary)'].max()
-    # Maximums by relay
-    max_impedance_by_relay = dataframe.groupby('Relay')['Impedance (Magnitude - Ohms secondary)'].max()
-    max_impedance_by_relay = max_impedance_by_relay.to_dict()
-    return max_impedance, max_impedance_by_relay
+    return max_impedance
 
 def get_min_impedance(dataframe):
-    """
-    Gets the minimum impedance from the faults collected
-
-    Parameter:
-    dataframe (DataFrame) - table of faults to compare
-
-    Returns:
-    min_impedance (float) - minimum overall impedance
-    min_impedance_by_relay (list) - list of minimum impedance amongst relays
-    """
+    """ Gets the minimum impedance from the faults collected """
     # Overall Min
     min_impedance = dataframe['Impedance (Magnitude - Ohms secondary)'].min()
-    # Minimums by relay
-    min_impedance_by_relay = dataframe.groupby('Relay')['Impedance (Magnitude - Ohms secondary)'].min()
-    min_impedance_by_relay = min_impedance_by_relay.to_dict()
-    return min_impedance, min_impedance_by_relay
+    return min_impedance
 
 def apply_header_style(cell):
-    """
-    Applies appearance for headers
-
-    Parameter:
-    cell - cell in Excel file to apply header appearance to
-    """
+    """ Applies appearance for headers """
     # Header style
     header_font = Font(bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
@@ -519,23 +480,12 @@ def apply_header_style(cell):
     cell.fill = header_fill
 
 def apply_row_style(cell):
-    """
-    Applies appearance for row cell
-
-    Parameter:
-    cell - cell in Excel file to apply row appearance to
-    """
+    """ Applies appearance for row cell """
     fill_gray = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
     cell.fill = fill_gray
 
 def stylize_main_table(ws, end_col):
-    """
-    Applies appearance to main table in Excel file
-
-    Parameters:
-    ws (Worksheet) - sheet of Excel file to use style on
-    end_col (int) - index of last column of main table in Excel file
-    """
+    """ Applies appearance to main table in Excel file """
     # Border style
     thin_border = Border(
         left=Side(style='thin'),
@@ -564,16 +514,10 @@ def stylize_main_table(ws, end_col):
             cell.alignment = Alignment(horizontal="center", vertical="center")
 
 def create_xlsx(txt_location, dataframe):
-    """
-    Creates or appends to an Excel spreadsheet to display fault data.
-
-    Parameters:
-    txt_location (str) - file path of TTY Window txt file
-    dataframe (DataFrame) - fault data
-    """
+    """ Creates or appends to an Excel spreadsheet to display fault data. """
     # Create Excel file
     original_txt_location = Path(txt_location)
-    file_path = original_txt_location.with_name("Fault Summary - TTY Window.xlsx")
+    file_path = original_txt_location.with_name(ask_file_name("Enter a name for the Excel summary file:") + ".xlsx")
     sheet_name = "Fault Summary"
 
     if file_path.exists():
@@ -602,48 +546,28 @@ def create_xlsx(txt_location, dataframe):
     wb = load_workbook(file_path)
     ws = wb[sheet_name]
 
-    if "Impedance (Magnitude - Ohms secondary)" in dataframe.columns:
-        start_row = 2
-        # Impedance maximums
-        # Per relay
-        max_impedance, max_imp_by_relay = get_max_impedance(dataframe)
-        relays = list(max_imp_by_relay.keys())
-        maximum_table_column = get_column_letter(ws.max_column + 3)
-        ws[f"{maximum_table_column}{start_row - 1}"].value = "Max Impedance by Relay"
-        for relay, imp in max_imp_by_relay.items():
-            ws[f"{maximum_table_column}{start_row + relays.index(relay)}"].value = relay
-            ws[f"{get_column_letter(column_index_from_string(maximum_table_column) + 1)}{start_row + relays.index(relay)}"].value = imp
-            if start_row + relays.index(relay) % 2 != 0:
-                apply_row_style(ws[f"{maximum_table_column}{start_row + relays.index(relay)}"])
-                apply_row_style(ws[f"{get_column_letter(column_index_from_string(maximum_table_column) + 1)}{start_row + relays.index(relay)}"])
-        # Overall max
-        ws[f"{maximum_table_column}{start_row + len(max_imp_by_relay) + 2}"].value = "Overall Maximum Impedance"
-        ws[f"{get_column_letter(column_index_from_string(maximum_table_column) + 1)}{start_row + len(max_imp_by_relay) + 2}"].value = max_impedance
-        apply_row_style(ws[f"{get_column_letter(column_index_from_string(maximum_table_column) + 1)}{start_row + len(max_imp_by_relay) + 2}"])
+    # Add Autofilter sorting dropdown
+    last_row = ws.max_row
+    ws.auto_filter.ref = f"A1:{get_column_letter(ws.max_column)}{last_row}"
 
-        # Impedance minimums
-        # Per relay
-        min_impedance, min_imp_by_relay = get_min_impedance(dataframe)
+    if "Impedance (Magnitude - Ohms secondary)" in dataframe.columns:
+        top_row = 1
+        # Impedance maximum
+        max_impedance = get_max_impedance(dataframe)
+        maximum_table_column = get_column_letter(ws.max_column + 3)
+        ws[f"{maximum_table_column}{top_row}"].value = "Maximum Impedance"
+        ws[f"{get_column_letter(column_index_from_string(maximum_table_column) + 1)}{top_row}"].value = max_impedance
+        apply_row_style(ws[f"{get_column_letter(column_index_from_string(maximum_table_column) + 1)}{top_row}"])
+        # Impedance minimum
+        min_impedance = get_min_impedance(dataframe)
         minimum_table_column = get_column_letter(ws.max_column + 3)
-        ws[f"{minimum_table_column}{start_row - 1}"].value = "Min Impedance by Relay"
-        for relay, imp in min_imp_by_relay.items():
-            ws[f"{minimum_table_column}{start_row + relays.index(relay)}"].value = relay
-            ws[f"{get_column_letter(column_index_from_string(minimum_table_column) + 1)}{start_row + relays.index(relay)}"].value = imp
-            if start_row + relays.index(relay) % 2 != 0:
-                apply_row_style(ws[f"{minimum_table_column}{start_row + relays.index(relay)}"])
-                apply_row_style(ws[f"{get_column_letter(column_index_from_string(minimum_table_column) + 1)}{start_row + relays.index(relay)}"])
-        # Overall min
-        ws[f"{minimum_table_column}{start_row + len(min_imp_by_relay) + 2}"].value = "Overall Minimum Impedance"
-        ws[f"{get_column_letter(column_index_from_string(minimum_table_column) + 1)}{start_row + len(min_imp_by_relay) + 2}"].value = min_impedance
-        apply_row_style(ws[f"{get_column_letter(column_index_from_string(minimum_table_column) + 1)}{start_row + len(min_imp_by_relay) + 2}"])
+        ws[f"{minimum_table_column}{top_row}"].value = "Minimum Impedance"
+        ws[f"{get_column_letter(column_index_from_string(minimum_table_column) + 1)}{top_row}"].value = min_impedance
+        apply_row_style(ws[f"{get_column_letter(column_index_from_string(minimum_table_column) + 1)}{top_row}"])
         # Stylize max
-        apply_header_style(ws[f"{maximum_table_column}{start_row - 1}"])
-        ws.merge_cells(f"{maximum_table_column}{start_row - 1}:{get_column_letter(column_index_from_string(maximum_table_column) + 1)}{start_row - 1}")
-        apply_header_style(ws[f"{maximum_table_column}{start_row + len(max_imp_by_relay) + 2}"])
+        apply_header_style(ws[f"{maximum_table_column}{top_row}"])
         # Stylize min
-        apply_header_style(ws[f"{minimum_table_column}{start_row - 1}"])
-        ws.merge_cells(f"{minimum_table_column}{start_row - 1}:{get_column_letter(column_index_from_string(minimum_table_column) + 1)}{start_row - 1}")
-        apply_header_style(ws[f"{minimum_table_column}{start_row + len(min_imp_by_relay) + 2}"])
+        apply_header_style(ws[f"{minimum_table_column}{top_row}"])
     # Stylize main table
     stylize_main_table(ws, len(dataframe.columns))
 
